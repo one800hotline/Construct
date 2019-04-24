@@ -211,8 +211,10 @@ def f_dict_map_woe(exec_f, indata_woe, list_col_map_woe):
 
 
 
-def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins):
+def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins, n_bins_distplot):
     
+
+
     """
     Docstring:
 
@@ -225,20 +227,21 @@ def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins):
     df_temp               pd.DataFrame(), shape(n*m): indata containing features and target for analysis
     list_col_trg          list of string, 1 element: list with name of target column
     list_col_metric       list of string, 1 element: list with name of analysis metric
-    n_bins             scalar, list or None: If scalar then equally sized bins. If list, the bin accordingly, if None then discrete levels of list_col_metric is used. 
+    n_bins                scalar, list or None: If scalar then equally sized bins. If list, the bin accordingly, if None then discrete levels of list_col_metric is used. 
+    n_bins_distplot       Scalar, or None: Determines the nr of bins for sns distplot of the ingoing metric being analyzed
 
     """
-    
+
     if exec_f:
+
         import pandas as pd
         from IPython.core.display import display
         import matplotlib.pyplot as plt
         import seaborn as sns
         import numpy as np
+        import warnings
 
-        # Set temporary working DataFrame
-        df_temp=indata.copy()
-        
+
         #----------------------------
         # Descriptive statistics
         #----------------------------
@@ -279,46 +282,68 @@ def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins):
         # Display aggregation
         display(df_temp_agg)
 
+        # Make a pass and check if we have any Nan, if sum gt 0 then throw warning
+        if df_temp[list_col_metric[0]].isna().sum()==0:
 
-        #---------------------------------------------
-        # Distribution, split on target
-        #---------------------------------------------
-        fig, ax=plt.subplots(ncols=1
-                            ,nrows=1
-                            ,figsize=(12,6))
+            #---------------------------------------------
+            # Distribution, overall
+            #---------------------------------------------
+            fig, ax=plt.subplots(ncols=1
+                                ,nrows=1
+                                ,figsize=(12,6)
+                                )
 
-        for trf_val in (df_temp[list_col_trg[0]].drop_duplicates()):
-            sns.distplot(tuple(df_temp[df_temp[list_col_trg[0]]==trf_val][list_col_metric[0]])) 
-
-        plt.tight_layout()
-        plt.show()
-
-        #------------------------
-        # Scatter plot
-        #------------------------
-        
-        # Using the ingoing metrics discrete levels as aggregation
-        if n_bins==None:
-
-            fig, ax=plt.subplots(ncols=1, nrows=1, figsize=(12, 6))
-            sns.regplot(x=df_temp_agg.index.values, y=df_temp_agg[('target', 'mean')], order=3,ci=None)
+            if n_bins_distplot is not None:
+                sns.distplot(df_temp[list_col_metric[0]], bins=n_bins_distplot)
+            else:
+                sns.distplot(df_temp[list_col_metric[0]])
 
             plt.tight_layout()
             plt.show()
+
+            #---------------------------------------------
+            # Distribution, split on target
+            #---------------------------------------------
+            fig, ax=plt.subplots(ncols=1
+                                ,nrows=1
+                                ,figsize=(12,6))
+
+            for trf_val in (df_temp[list_col_trg[0]].drop_duplicates()):
+                sns.distplot(tuple(df_temp[df_temp[list_col_trg[0]]==trf_val][list_col_metric[0]])) 
+
+            plt.tight_layout()
+            plt.show()
+
+            #------------------------
+            # Scatter plot
+            #------------------------
+
+            # Using the ingoing metrics discrete levels as aggregation
+            if n_bins==None:
+
+                fig, ax=plt.subplots(ncols=1, nrows=1, figsize=(12, 6))
+                sns.regplot(x=df_temp_agg.index.values, y=df_temp_agg[('target', 'mean')], order=3,ci=None)
+
+                plt.tight_layout()
+                plt.show()
+
+            else:
+                df_temp_agg=pd.concat([df_temp_agg, df_temp[['grp_'+list_col_metric[0], list_col_metric[0]]].groupby(['grp_'+list_col_metric[0]], as_index=False).mean()[list_col_metric[0]]]
+                                        ,axis=1, sort=False)
+
+                fig, ax=plt.subplots(ncols=1, nrows=1, figsize=(12, 6))
+                sns.regplot(x=df_temp_agg.index.values, y=df_temp_agg[('target', 'mean')], order=3, ci=None)
+
+                plt.tight_layout()
+                plt.show()
 
         else:
-            df_temp_agg=pd.concat([df_temp_agg, df_temp[['grp_'+list_col_metric[0], list_col_metric[0]]].groupby(['grp_'+list_col_metric[0]], as_index=False).mean()[list_col_metric[0]]]
-                                    ,axis=1, sort=False)
+            warnings.warn("Ingoing metric has NaN, need to be imputed")
 
-            fig, ax=plt.subplots(ncols=1, nrows=1, figsize=(12, 6))
-            sns.regplot(x=df_temp_agg.index.values, y=df_temp_agg[('target', 'mean')], order=3, ci=None)
-
-            plt.tight_layout()
-            plt.show()
-            
     else:
-    
+
         print ("No execution of function, ending....")
+
 
 def f_regex_int(exec_f, series):
     """
