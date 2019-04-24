@@ -241,6 +241,7 @@ def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins, n_bins_dis
         import numpy as np
         import warnings
 
+        df_temp=indata.copy()
 
         #----------------------------
         # Descriptive statistics
