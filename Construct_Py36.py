@@ -346,20 +346,20 @@ def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins, n_bins_dis
         print ("No execution of function, ending....")
 
 
-def f_regex_int(exec_f, series):
+def f_regex_int(exec_f, in_series):
     """
     Takes object series, pushes back integers, [0-9] 
     """
     import pandas as pd
-    return series.astype('str').str.extract(('(\d+)'), expand = True).astype('float64')
+    return in_series.astype('str').str.extract(('(\d+)'), expand = True).astype('float64')
 
 
-def f_regex_str(exec_f, series):
+def f_regex_str(exec_f, in_series):
     """
     Takes object series, pushes back characters, [A-Ö, a-ä] 
     """
     import pandas as pd
-    return series.astype('str').str.extract(('(\D+)'), expand = True)
+    return in_series.astype('str').str.extract(('(\D+)'), expand = True)
 
 def f_grpby_fillna(exec_f, indata, list_grpby, col_fillna, col_fillna_val, func_fillna):
 
@@ -665,11 +665,11 @@ def f_table_overv(exec_f, indata, list_col_excl):
 
         import pandas as pd
         import numpy as np
-        
-        
+
+
         # Column type into a series with index being column name
         srs_datatypes = indata[[col for col in indata.columns if col not in (list_col_excl)]].dtypes
-        
+
         #-------------------------------------------
         # Numerical columns (Discrete + Continious)
         #-------------------------------------------
@@ -678,71 +678,81 @@ def f_table_overv(exec_f, indata, list_col_excl):
         boolean_srs_col_int = (srs_datatypes.astype(str).str.find('int') >= 0)
         boolean_srs_col_float = (srs_datatypes.astype(str).str.find('float') >= 0)
 
-        # Put col name into list
-        list_col_float = srs_datatypes[boolean_srs_col_float].index.tolist()
-        list_col_int = srs_datatypes[boolean_srs_col_int].index.tolist()
 
-        # All numeric columns
-        list_col_num = list_col_float+list_col_int
+        # Check to see if we have any columns of type numerical (integer/float). If so, proceed, else return only object part and None
+        if (boolean_srs_col_int.sum(axis=0)==0) and (boolean_srs_col_float.sum(axis=0)==0): 
+            boolean_flag_oth_only=True
+            print ("\nWe have no columns of type 'Float' or 'Int', only returning object and date part of table overview:")
 
-        # Print out
-        print ("Columns float: {}".format(list_col_float))
-        print ("Columns int: {}".format(list_col_int))
-        print ("\nAll numerical columns: {}".format(list_col_num))        
-        
-        
-        # Holder for numeric columns
-        list_hld_col_cnt_num = list()
+        # We have float and/or integer columns
+        else:
+            boolean_flag_oth_only=False
 
-        # Loop-through and categorize
-        for idx_col_num, col_name_num in enumerate(list_col_num):
+            # Put col name into list
+            list_col_float = srs_datatypes[boolean_srs_col_float].index.tolist()
+            list_col_int = srs_datatypes[boolean_srs_col_int].index.tolist()
 
-            # How many unique elements for a given column
-            _col_elm_cnt = len(pd.unique(indata[col_name_num].values))
+            # All numeric columns
+            list_col_num = list_col_float+list_col_int
 
-            # Append name + count to list holders
-            list_hld_col_cnt_num.append((col_name_num, _col_elm_cnt))
-
-        # List to DataFrame
-        df_col_elem_cnt_num = pd.DataFrame(list_hld_col_cnt_num, columns = ['col_name', 'unq_val_cnt'])
-        
-        # Column names and datatypes
-        df_col_dtype_num = pd.DataFrame(indata.dtypes).reset_index().rename(columns = {'index' : 'col_name', 0 : 'col_type'})
-        df_col_dtype_num = df_col_dtype_num[df_col_dtype_num['col_name'].isin(list_col_num)].set_index('col_name')
-        
-        
-        # Count all isnull
-        srs_col_isnull = pd.DataFrame(indata[list_col_num].isnull().sum(axis = 0)).rename(columns = {0 : 'isnull_cnt'}).reset_index(drop = True)
-        
-        # Merge back count isnull + unique values + column data type, and have correct order on columns
-        df_col_elem_cnt_num = pd.concat([df_col_elem_cnt_num[['col_name']], srs_col_isnull,df_col_elem_cnt_num[['unq_val_cnt']]]
-                                   ,axis = 1, sort=False)
-
-        # Count total nr rows
-        df_col_elem_cnt_num['n_rows_tot'] = len(indata)
-        
-        # Calculate % missing values for given column
-        df_col_elem_cnt_num['%_null_tot'] = df_col_elem_cnt_num['isnull_cnt'].div(df_col_elem_cnt_num['n_rows_tot'])
-
-        # Copy table
-        df_cols_meta_num = df_col_elem_cnt_num.copy()
+            # Print out
+            print ("Columns float: {}".format(list_col_float))
+            print ("Columns int: {}".format(list_col_int))
+            print ("\nAll numerical columns: {}".format(list_col_num))        
 
 
-        # Describe on all input columns 
-        df_describe = indata[df_cols_meta_num.col_name.tolist()].describe().T
+            # Holder for numeric columns
+            list_hld_col_cnt_num = list()
 
-        # Set index to column col_name in meta table to enable join on index
-        df_cols_meta_num.set_index('col_name', inplace=True)
+            # Loop-through and categorize
+            for idx_col_num, col_name_num in enumerate(list_col_num):
 
-        # Merge with metadata, exclude index and count
-        df_cols_meta_num = pd.concat([df_cols_meta_num,df_col_dtype_num, df_describe[[col for col in df_describe.columns if col not in (['count'])]]]
-                                ,axis = 1, sort=False).reset_index()
+                # How many unique elements for a given column
+                _col_elm_cnt = len(pd.unique(indata[col_name_num].values))
 
-        # Final fix
-        df_cols_meta_num.rename(columns={'index' : 'col_name'}, inplace = True)        
-        df_cols_meta_num = df_cols_meta_num[['col_name', 'col_type'] + [col for col in df_cols_meta_num.columns if col not in (['col_name','col_type'])]]
-        
-        
+                # Append name + count to list holders
+                list_hld_col_cnt_num.append((col_name_num, _col_elm_cnt))
+
+            # List to DataFrame
+            df_col_elem_cnt_num = pd.DataFrame(list_hld_col_cnt_num, columns = ['col_name', 'unq_val_cnt'])
+
+            # Column names and datatypes
+            df_col_dtype_num = pd.DataFrame(indata.dtypes).reset_index().rename(columns = {'index' : 'col_name', 0 : 'col_type'})
+            df_col_dtype_num = df_col_dtype_num[df_col_dtype_num['col_name'].isin(list_col_num)].set_index('col_name')
+
+
+            # Count all isnull
+            srs_col_isnull = pd.DataFrame(indata[list_col_num].isnull().sum(axis = 0)).rename(columns = {0 : 'isnull_cnt'}).reset_index(drop = True)
+
+            # Merge back count isnull + unique values + column data type, and have correct order on columns
+            df_col_elem_cnt_num = pd.concat([df_col_elem_cnt_num[['col_name']], srs_col_isnull,df_col_elem_cnt_num[['unq_val_cnt']]]
+                                       ,axis = 1, sort=False)
+
+            # Count total nr rows
+            df_col_elem_cnt_num['n_rows_tot'] = len(indata)
+
+            # Calculate % missing values for given column
+            df_col_elem_cnt_num['%_null_tot'] = df_col_elem_cnt_num['isnull_cnt'].div(df_col_elem_cnt_num['n_rows_tot'])
+
+            # Copy table
+            df_cols_meta_num = df_col_elem_cnt_num.copy()
+
+
+            # Describe on all input columns 
+            df_describe = indata[df_cols_meta_num.col_name.tolist()].describe().T
+
+            # Set index to column col_name in meta table to enable join on index
+            df_cols_meta_num.set_index('col_name', inplace=True)
+
+            # Merge with metadata, exclude index and count
+            df_cols_meta_num = pd.concat([df_cols_meta_num,df_col_dtype_num, df_describe[[col for col in df_describe.columns if col not in (['count'])]]]
+                                    ,axis = 1, sort=False).reset_index()
+
+            # Final fix
+            df_cols_meta_num.rename(columns={'index' : 'col_name'}, inplace = True)        
+            df_cols_meta_num = df_cols_meta_num[['col_name', 'col_type'] + [col for col in df_cols_meta_num.columns if col not in (['col_name','col_type'])]]
+
+
         #------------------------------------
         # Other columns (String + date type)
         #------------------------------------
@@ -750,73 +760,96 @@ def f_table_overv(exec_f, indata, list_col_excl):
         boolean_srs_col_obj = (srs_datatypes.astype(str).str.find('obj') >= 0)
         boolean_srs_col_date = (srs_datatypes.astype(str).str.find('date') >= 0)
 
-        list_col_obj = srs_datatypes[boolean_srs_col_obj].index.tolist()
-        list_col_date = srs_datatypes[boolean_srs_col_date].index.tolist()
+        # Check to see if we have any columns of type object and/or date. If so, proceed, else return only integer/float and None
+        if (boolean_srs_col_date.sum(axis=0)==0) and (boolean_srs_col_obj.sum(axis=0)==0): 
+            boolean_flag_num_only=True
+            print ("\nWe have no columns of type 'Object' or 'Date', only returning numerical part of table overview:")
 
-        list_col_oth = list_col_obj + list_col_date
+        # We have either Data or Object
+        else:
+            boolean_flag_num_only=False
 
-        print ("Columns date: {}".format(list_col_date))
-        print ("Columns object/string: {}".format(list_col_obj))
-        print ("\nAll other columns: {}".format(list_col_oth))
-        
-        # Holder for numeric columns
-        list_hld_col_cnt_oth = list()
+            list_col_obj = srs_datatypes[boolean_srs_col_obj].index.tolist()
+            list_col_date = srs_datatypes[boolean_srs_col_date].index.tolist()
 
-        # Loop-through and categorize
-        for idx_col_oth, col_name_oth in enumerate(list_col_oth):
+            list_col_oth = list_col_obj + list_col_date
 
-            # How many unique elements for a given column
-            _col_elm_cnt = len(pd.unique(indata[col_name_oth].values))
+            print ("Columns date: {}".format(list_col_date))
+            print ("Columns object/string: {}".format(list_col_obj))
+            print ("\nAll other columns: {}".format(list_col_oth))
 
-            # Append name + count to list holders
-            list_hld_col_cnt_oth.append((col_name_oth, _col_elm_cnt))
+            # Holder for numeric columns
+            list_hld_col_cnt_oth = list()
 
-        # List to DataFrame
-        df_col_elem_cnt_oth = pd.DataFrame(list_hld_col_cnt_oth, columns = ['col_name', 'unq_val_cnt'])
-        
-        # Count all isnull
-        srs_col_isnull = pd.DataFrame(indata[list_col_oth].isnull().sum(axis = 0)).rename(columns = {0 : 'isnull_cnt'}).reset_index(drop = True)
-        
-        # Column names and datatypes
-        df_col_dtype_oth = pd.DataFrame(indata.dtypes).reset_index().rename(columns = {'index' : 'col_name', 0 : 'col_type'})
-        df_col_dtype_oth = df_col_dtype_oth[df_col_dtype_oth['col_name'].isin(list_col_oth)].set_index('col_name')
+            # Loop-through and categorize
+            for idx_col_oth, col_name_oth in enumerate(list_col_oth):
 
-        
-        
-        # Merge back count isnull + unique values and have correct order on columns
-        df_col_elem_cnt_oth = pd.concat([df_col_elem_cnt_oth[['col_name']], srs_col_isnull,df_col_elem_cnt_oth[['unq_val_cnt']]]
-                                   ,axis = 1, sort=False)
+                # How many unique elements for a given column
+                _col_elm_cnt = len(pd.unique(indata[col_name_oth].values))
 
-        # Count total nr rows
-        df_col_elem_cnt_oth['n_rows_tot'] = len(indata)
-        
-        # Calculate % missing values for given column
-        df_col_elem_cnt_oth['%_null_tot'] = df_col_elem_cnt_oth['isnull_cnt'].div(df_col_elem_cnt_oth['n_rows_tot'])
+                # Append name + count to list holders
+                list_hld_col_cnt_oth.append((col_name_oth, _col_elm_cnt))
 
-        # Copy 
-        df_cols_meta_oth = df_col_elem_cnt_oth.copy()
+            # List to DataFrame
+            df_col_elem_cnt_oth = pd.DataFrame(list_hld_col_cnt_oth, columns = ['col_name', 'unq_val_cnt'])
+
+            # Count all isnull
+            srs_col_isnull = pd.DataFrame(indata[list_col_oth].isnull().sum(axis = 0)).rename(columns = {0 : 'isnull_cnt'}).reset_index(drop = True)
+
+            # Column names and datatypes
+            df_col_dtype_oth = pd.DataFrame(indata.dtypes).reset_index().rename(columns = {'index' : 'col_name', 0 : 'col_type'})
+            df_col_dtype_oth = df_col_dtype_oth[df_col_dtype_oth['col_name'].isin(list_col_oth)].set_index('col_name')
 
 
-        # Describe on all input 
-        df_describe = indata[df_cols_meta_oth.col_name.tolist()].describe().T
 
-        # Set index to column col_name in meta table to enable join on index
-        df_cols_meta_oth.set_index('col_name', inplace=True)
+            # Merge back count isnull + unique values and have correct order on columns
+            df_col_elem_cnt_oth = pd.concat([df_col_elem_cnt_oth[['col_name']], srs_col_isnull,df_col_elem_cnt_oth[['unq_val_cnt']]]
+                                       ,axis = 1, sort=False)
 
-        # Merge with metadata, exclude index and count
-        df_cols_meta_oth = pd.concat([df_cols_meta_oth,df_col_dtype_oth, df_describe[[col for col in df_describe.columns if col not in (['count'])]]]
-                                ,axis = 1, sort=False).reset_index()
+            # Count total nr rows
+            df_col_elem_cnt_oth['n_rows_tot'] = len(indata)
 
-        # Final fix + Sort order
-        df_cols_meta_oth.rename(columns={'index' : 'col_name'}, inplace = True)                
-        df_cols_meta_oth = df_cols_meta_oth[['col_name', 'col_type'] + [col for col in df_cols_meta_oth.columns if col not in (['col_name','col_type'])]]
-        
-        
+            # Calculate % missing values for given column
+            df_col_elem_cnt_oth['%_null_tot'] = df_col_elem_cnt_oth['isnull_cnt'].div(df_col_elem_cnt_oth['n_rows_tot'])
+
+            # Copy 
+            df_cols_meta_oth = df_col_elem_cnt_oth.copy()
+
+
+            # Describe on all input 
+            df_describe = indata[df_cols_meta_oth.col_name.tolist()].describe().T
+
+            # Set index to column col_name in meta table to enable join on index
+            df_cols_meta_oth.set_index('col_name', inplace=True)
+
+            # Merge with metadata, exclude index and count
+            df_cols_meta_oth = pd.concat([df_cols_meta_oth,df_col_dtype_oth, df_describe[[col for col in df_describe.columns if col not in (['count'])]]]
+                                    ,axis = 1, sort=False).reset_index()
+
+            # Final fix + Sort order
+            df_cols_meta_oth.rename(columns={'index' : 'col_name'}, inplace = True)                
+            df_cols_meta_oth = df_cols_meta_oth[['col_name', 'col_type'] + [col for col in df_cols_meta_oth.columns if col not in (['col_name','col_type'])]]
+
 
         #-----------------------------------------------------------------
         # Here we return numeric output and other output (string + date)
         #-----------------------------------------------------------------
-        return df_cols_meta_num, df_cols_meta_oth
+        if boolean_flag_oth_only and boolean_flag_num_only:
+            print ("\nIndata is empty, check previous data load steps. Ending...")
+            return None, None
+
+        elif boolean_flag_oth_only and not boolean_flag_num_only:
+            print ("\nReturning other data overview only (Object and Date).")
+            return None, df_cols_meta_oth
+
+        elif not boolean_flag_oth_only and boolean_flag_num_only:
+            print ("\nReturning numerical data overview only (Float and Integer).")
+            return df_cols_meta_num, None
+
+        elif not boolean_flag_oth_only and not boolean_flag_num_only:
+            print ("\nReturning both other and numerical data overview.")
+            return df_cols_meta_num, df_cols_meta_oth
+
         
     else:
         
@@ -824,7 +857,6 @@ def f_table_overv(exec_f, indata, list_col_excl):
         return None, None
         
         
- 
         
 
 def f_row_count(exec_f,indata,desc_str,row_count,id_count,id_count_notn,disc_vc):
