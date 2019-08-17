@@ -1104,7 +1104,7 @@ def f_vc_aug(exec_f
         # Plot dist
         if plot:
             fig_idx_plt, ax_idx_plt = plt.subplots(figsize = (15, 6))
-            sns.barplot(x="category", y=var, data=df)
+            sns.barplot(x="category", y=var, data=df, palette='Blues')
             plt.show()
                 
             
