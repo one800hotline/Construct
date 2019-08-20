@@ -640,7 +640,7 @@ def f_wgt_avg(indata, wgt_col, avg_col, grp_col=None):
 
 
 
-def f_table_overv(exec_f, indata, list_col_excl):
+def f_table_overv(exec_f, indata, list_col_excl, sclr_prct_drop_missing):
 
     """
     Docstring:
@@ -669,6 +669,7 @@ def f_table_overv(exec_f, indata, list_col_excl):
 
         # Column type into a series with index being column name
         srs_datatypes = indata[[col for col in indata.columns if col not in (list_col_excl)]].dtypes
+        sclr_drop_prct_missing=sclr_prct_drop_missing
 
         #-------------------------------------------
         # Numerical columns (Discrete + Continious)
@@ -751,6 +752,26 @@ def f_table_overv(exec_f, indata, list_col_excl):
             # Final fix
             df_cols_meta_num.rename(columns={'index' : 'col_name'}, inplace = True)        
             df_cols_meta_num = df_cols_meta_num[['col_name', 'col_type'] + [col for col in df_cols_meta_num.columns if col not in (['col_name','col_type'])]]
+    
+            #---------------------------------------
+            # Set generic drop flag for features
+            #---------------------------------------
+
+            # Missing value percentage of total rows
+            df_cols_meta_num.loc[df_cols_meta_num['%_null_tot']>sclr_drop_prct_missing, 'col_f_drop']=1
+            df_cols_meta_num['col_f_drop'].fillna(0, inplace=True)
+
+            # Sparse vector, starting min
+            df_cols_meta_num.loc[df_cols_meta_num[['min', '25%', '50%', '75%']].sum(axis=1)==0, 'col_f_drop']=1
+            df_cols_meta_num['col_f_drop'].fillna(0, inplace=True)
+
+            # Sparse vector, starting max
+            df_cols_meta_num.loc[df_cols_meta_num[['max', '25%', '50%', '75%']].sum(axis=1)==0, 'col_f_drop']=1
+            df_cols_meta_num['col_f_drop'].fillna(0, inplace=True)
+
+            # Still sparse vector
+            df_cols_meta_num.loc[df_cols_meta_num[['25%', '50%', '75%']].sum(axis=1)==0, 'col_f_drop']=1
+            df_cols_meta_num['col_f_drop'].fillna(0, inplace=True)
 
 
         #------------------------------------
