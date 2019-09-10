@@ -670,7 +670,14 @@ def f_table_overv(exec_f, indata, list_col_excl, sclr_prct_drop_missing):
 
         import pandas as pd
         import numpy as np
+        import time as time
 
+        def f_dt_now():
+            import datetime as dt
+            return dt.datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+
+        print ("Datetime now is: {}\n".format(f_dt_now()))
+        tick = time.time()
 
         # Column type into a series with index being column name
         srs_datatypes = indata[[col for col in indata.columns if col not in (list_col_excl)]].dtypes
@@ -856,6 +863,7 @@ def f_table_overv(exec_f, indata, list_col_excl, sclr_prct_drop_missing):
             df_cols_meta_oth.rename(columns={'index' : 'col_name'}, inplace = True)                
             df_cols_meta_oth = df_cols_meta_oth[['col_name', 'col_type'] + [col for col in df_cols_meta_oth.columns if col not in (['col_name','col_type'])]]
 
+        print ("\nTotal elapsed time is: {}s".format(round(time.time()-tick, 2)))
 
         #-----------------------------------------------------------------
         # Here we return numeric output and other output (string + date)
