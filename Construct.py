@@ -106,6 +106,11 @@ def f_woe(exec_f, indata, list_col_woe, dict_woe_summary):
 
     if exec_f:
     
+        import pandas as pd
+        import numpy as np
+        import Construct as cstr
+        
+
         df_tmp=indata.copy()
         
         
@@ -1159,6 +1164,8 @@ def f_srt_dict(exec_f
     
     """
     
+    import operator
+
     if exec_f:
     
         if (lst) and diction == False:
@@ -1326,7 +1333,9 @@ class c_atlas(object):
     
     """
     
-    
+    import pandas as pd
+    import numpy as np
+
     # Define init and indata, and datestamt for output tag
     def __init__(self, indata):
         
