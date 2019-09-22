@@ -135,9 +135,9 @@ def f_drop_isna_feat(exec_f, indata, sclr_cutoff_drop=1, bool_return_drop_list=F
             # Push back result, dropping columns not to be included
             return df_temp
         
-        elif bool_return is True:
+        elif bool_return_drop_list is True:
             # Push back result, dropping columns not to be included
-            return df_temp, list_tmp_drop_col
+            return df_temp, list_tmp_col_drop
             
         
     else:
