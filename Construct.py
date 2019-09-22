@@ -92,8 +92,6 @@ def f_dt_now():
 #-------------------------
 # Construct functions
 #-------------------------
-
-
 def f_drop_isna_feat(exec_f, indata, sclr_cutoff_drop=1, bool_return_drop_list=False):
 
     """
@@ -144,6 +142,63 @@ def f_drop_isna_feat(exec_f, indata, sclr_cutoff_drop=1, bool_return_drop_list=F
         print ("No execution of function, ending....")
         return indata
     
+
+def f_grpby_aug(exec_f,indata ,list_col_agg, dict_f_agg):
+
+    """
+    Docstring for augmented groupby:
+    
+    Used to apply multiple functions on indata given groupby aggregation. The multilevel hierarchical columns are flattened and combined for clear
+    naming of columns and consistent metadata.
+    
+    exec_f            Boolean(True/False): Go or no go on function execution
+    indata            pandas DataFrame(): Indata to be aggregated
+    list_col_agg      list of strings - (n*1): Contains variable names of columns to be used for aggregation
+    dict_f_agg        dictionary of key:value strings: Contains mapping of functions being applied to variables in indata    
+    """
+    
+    # Go!
+    if exec_f:
+        import pandas as pd
+        import numpy as np
+
+        print ("Exeucting groupby function....")
+        print ("\nAggregator variables are: \n{}".format(list_col_agg))
+        print ("\nVariables with functons are: \n{}".format(dict_f_agg))
+        
+        # Perform aggregation on data
+        indata_agg=indata[list_col_agg+list(dict_f_agg.keys())].groupby(list_col_agg, as_index=False).agg(dict_f_agg)
+
+        # Get level 1 column names and set to list everything not being count and aggregators
+        list_col_lvl1=list(indata_agg.columns.get_level_values(1))
+        list_col_lvl1_mtrc=[col for col in list_col_lvl1 if col not in (['', 'count'])]
+
+        # Get level 0 column names and set to list everything not being count and aggregators
+        list_col_lvl0=list(indata_agg.columns.get_level_values(0))
+        list_col_count=list({key:val for (key,val) in dict_f_agg.items() if val=='count'}.keys())
+
+        list_col_lvl0_map=[col for col in list_col_lvl0 if col not in (list_col_agg+list_col_count)]
+    
+        # Set columns for aggregation DataFrame to level 1
+        indata_agg.columns=indata_agg.columns.get_level_values(0)
+
+        # Re-map everything using level 1 column names
+        indata_agg.columns=list_col_agg+list_col_count + [col[0] + '_' + col[1] for col in zip(list_col_lvl0_map, list_col_lvl1_mtrc)]
+        
+        # Rename count column to 'count' and return
+        indata_agg.rename(columns={key:val for (key,val) in dict_f_agg.items() if val=='count'}, inplace=True)
+        
+        return indata_agg
+                
+        
+    # No go!
+    else:
+        print ("No execution of function, returining None.")
+        return None
+
+
+
+
 
 # Define function for estimating WoE for a discrete variable
 def f_woe(exec_f, indata, list_col_woe, dict_woe_summary):
@@ -481,67 +536,6 @@ def f_grpby_fillna(exec_f, indata, list_grpby, col_fillna, col_fillna_val, func_
         print ("No execution of groupby fillna-function, returning indata...")
 
         return indata
-
-    
-def f_grpby_aug(exec_f,indata ,list_col_agg, dict_f_agg):
-
-    """
-    Docstring for augmented groupby:
-    
-    Used to apply multiple functions on indata given groupby aggregation. The multilevel hierarchical columns are flattened and combined for clear
-    naming of columns and consistent metadata.
-    
-    exec_f            Boolean(True/False): Go or no go on function execution
-    indata            pandas DataFrame(): Indata to be aggregated
-    list_col_agg      list of strings - (n*1): Contains variable names of columns to be used for aggregation
-    dict_f_agg        dictionary of key:value strings: Contains mapping of functions being applied to variables in indata    
-    """
-    
-    # Go!
-    if exec_f:
-        import pandas as pd
-        import numpy as np
-
-        print ("Exeucting groupby function....")
-        print ("\nAggregator variables are: \n{}".format(list_col_agg))
-        print ("\nVariables with functons are: \n{}".format(dict_f_agg))
-        
-        # Perform aggregation on data
-        indata_agg=indata[list_col_agg+list(dict_f_agg.keys())].groupby(list_col_agg, as_index=False).agg(dict_f_agg)
-
-        # Get level 1 column names and set to list everything not being count and aggregators
-        list_col_lvl1=list(indata_agg.columns.get_level_values(1))
-        list_col_lvl1_mtrc=[col for col in list_col_lvl1 if col not in (['', 'count'])]
-
-        # Get level 0 column names and set to list everything not being count and aggregators
-        list_col_lvl0=list(indata_agg.columns.get_level_values(0))
-        list_col_count=list({key:val for (key,val) in dict_f_agg.items() if val=='count'}.keys())
-
-        list_col_lvl0_map=[col for col in list_col_lvl0 if col not in (list_col_agg+list_col_count)]
-    
-        # Set columns for aggregation DataFrame to level 1
-        indata_agg.columns=indata_agg.columns.get_level_values(0)
-
-        # Re-map everything using level 1 column names
-        indata_agg.columns=list_col_agg+list_col_count + [col[0] + '_' + col[1] for col in zip(list_col_lvl0_map, list_col_lvl1_mtrc)]
-        
-        # Rename count column to 'count' and return
-        indata_agg.rename(columns={key:val for (key,val) in dict_f_agg.items() if val=='count'}, inplace=True)
-        
-        return indata_agg
-                
-        
-    # No go!
-    else:
-        print ("No execution of function, returining None.")
-        return None
-    
-    
-    
-    
-    
-    
-    
     
     
     
