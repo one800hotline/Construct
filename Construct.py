@@ -94,6 +94,57 @@ def f_dt_now():
 #-------------------------
 
 
+def f_drop_isna_feat(exec_f, indata, sclr_cutoff_drop=1, bool_return_drop_list=False):
+
+    """
+    This function takes as input a DataFrame and a sclr cut-off lvl between 0 and 1. The function looks at the proportion of missing values and drops any features that has a 
+    higher missing values proportion than seleceted cut-off. Function returns DataFrame and/or list of string with column names. 
+    """
+    
+    if exec_f:
+        
+        import pandas as pd
+        import numpy as np
+        
+        # Check the value of our scalar cut-off (between 0 and 1) and bool
+        assert sclr_cutoff_drop >= 0
+        assert sclr_cutoff_drop <= 1
+        assert bool_return_drop_list in ([True, False])
+        
+        # Main Indata
+        df_temp=indata.copy()
+
+        # DataFrame with 1 row/features and count missing values. Rename columns
+        df_temp_isna = pd.DataFrame(df_temp.isna().sum(axis=0)).reset_index()
+        df_temp_isna.rename(columns = {0 : 'count_missing'
+                                      ,'index' : 'feature_name'}
+                            ,inplace=True
+                           )
+        
+        # Proportion missing
+        df_temp_isna['prct_of_tot'] = df_temp_isna['count_missing']/len(df_temp)
+        
+        # Get features fulfilling scalar cut-off condition
+        list_tmp_col_drop = df_temp_isna[df_temp_isna['prct_of_tot']>=sclr_cutoff_drop]['feature_name'].tolist()
+  
+        print ("\nDropping columns in list: \n{}".format(list_tmp_col_drop))
+        df_temp.drop(list_tmp_col_drop, axis=1, inplace=True)
+
+        # Return result
+        if bool_return_drop_list is False:
+            # Push back result, dropping columns not to be included
+            return df_temp
+        
+        elif bool_return is True:
+            # Push back result, dropping columns not to be included
+            return df_temp, list_tmp_drop_col
+            
+        
+    else:
+        print ("No execution of function, ending....")
+        return indata
+    
+
 # Define function for estimating WoE for a discrete variable
 def f_woe(exec_f, indata, list_col_woe, dict_woe_summary):
     
