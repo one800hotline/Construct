@@ -459,18 +459,72 @@ def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins, n_bins_dis
 
 def f_regex_int(exec_f, in_series):
     """
-    Takes object series, pushes back integers, [0-9] 
+    Takes object series, pushes back FIRST MATCH of integers, [0-9] 
     """
     import pandas as pd
     return in_series.astype('str').str.extract(('(\d+)'), expand = True).astype('float64')
 
+def f_regex_int_all(exec_f, indata, str_srs_extract_int):
+    """
+    This function takes a DataFrame, and column name as string, and parses out ALL MATCHES of characters, [a-ö], [A-Ö], [&/()&/)¤], etc....
+    """
+    
+    if exec_f:
+        
+        # Modules
+        import pandas as pd
+        import numpy as np
+    
+        # Indata
+        df_temp = indata.copy()
+    
+        # Explode regex extract
+        srs_int_all = df_temp[str_srs_extract_int].str.findall('(\d+)', flags=re.IGNORECASE).explode()
+        
+        # Groupby and sum them so we get unique index rows again
+        df_temp[str_srs_extract_int + '_int'] = srs_int_all.groupby(srs_int_all.index).sum()
+        
+        # Return data
+        return df_temp
+        
+    else:
+        print ("No execution of function, passing indata")
+        return indata
 
 def f_regex_str(exec_f, in_series):
     """
-    Takes object series, pushes back characters, [A-Ö, a-ä] 
+    Takes object series, pushes back FIRST MATCH of characters, [A-Ö, a-ä] 
     """
     import pandas as pd
     return in_series.astype('str').str.extract(('(\D+)'), expand = True)
+
+def f_regex_char_all(exec_f, indata, str_srs_extract_char):
+    """
+    This function takes a DataFrame, and column name as string, and parses out ALL MATCHES of integers, [0-9]
+    """
+    
+    if exec_f:
+        
+        # Modules
+        import pandas as pd
+        import numpy as np
+    
+        # Indata
+        df_temp = indata.copy()
+    
+        # Explode regex extract
+        srs_char_all = df_temp[str_srs_extract_char].str.findall('(\D+)', flags=re.IGNORECASE).explode()
+        
+        # Groupby and sum them so we get unique index rows again
+        df_temp[str_srs_extract_char + '_char'] = srs_char_all.groupby(srs_char_all.index).sum()
+        
+        # Return data
+        return df_temp
+        
+    else:
+        print ("No execution of function, passing indata")
+        return indata
+
 
 def f_grpby_fillna(exec_f, indata, list_grpby, col_fillna, col_fillna_val, func_fillna):
 
