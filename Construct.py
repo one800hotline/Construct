@@ -457,16 +457,17 @@ def f_desc_aug(exec_f, indata, list_col_trg, list_col_metric, n_bins, n_bins_dis
         print ("No execution of function, ending....")
 
 
-def f_regex_int(exec_f, in_series):
+def f_regex_num(exec_f, in_series):
     """
     Takes object series, pushes back FIRST MATCH of integers, [0-9] 
     """
     import pandas as pd
     return in_series.astype('str').str.extract(('(\d+)'), expand = True).astype('float64')
 
-def f_regex_int_all(exec_f, indata, str_srs_extract_int):
+def f_regex_num_all(exec_f, indata, str_srs_extract_num):
     """
     This function takes a DataFrame, and column name as string, and parses out ALL MATCHES of characters, [a-ö], [A-Ö], [&/()&/)¤], etc....
+    NOTE: This function is not optimized for big data volumes.
     """
     
     if exec_f:
@@ -474,15 +475,19 @@ def f_regex_int_all(exec_f, indata, str_srs_extract_int):
         # Modules
         import pandas as pd
         import numpy as np
-    
+        import re
+
         # Indata
         df_temp = indata.copy()
     
-        # Explode regex extract
-        srs_int_all = df_temp[str_srs_extract_int].str.findall('(\d+)', flags=re.IGNORECASE).explode()
+        # Explode regex extract to "many rows per match", if index has two match it becomes duplicate, i.e. 1 --> 1, 1
+        srs_num_all = df_temp[str_srs_extract_num].astype('str').str.findall('(\d+)').explode()
         
+        # Remove NaN values so we dont sum NaN
+        srs_num_all = srs_num_all[srs_num_all.notna()]
+
         # Groupby and sum them so we get unique index rows again
-        df_temp[str_srs_extract_int + '_int'] = srs_int_all.groupby(srs_int_all.index).sum()
+        df_temp[str_srs_extract_num + '_num'] = srs_num_all.groupby(srs_num_all.index).sum().astype('float64')
         
         # Return data
         return df_temp
@@ -490,6 +495,36 @@ def f_regex_int_all(exec_f, indata, str_srs_extract_int):
     else:
         print ("No execution of function, passing indata")
         return indata
+
+def f_regex_rpl_num_all(exec_f, indata, str_srs_extract_num):
+    """
+    This function takes a DataFrame, and column name as string, and REMOVES ALL MATCHES of CHARACTERS to obtain a NUMERIC ONLY SERIES.
+    """
+    
+    if exec_f:
+        
+        # Modules
+        import pandas as pd
+        import numpy as np
+        import re
+    
+        # Indata
+        df_temp = indata.copy()
+
+        # Remove all characters from character/object series
+        df_temp[str_srs_extract_num+'_num'] = df_temp[str_srs_extract_num].replace('\D+', '', regex = True)
+        
+        # Replace blank with nan
+        df_temp[str_srs_extract_num+'_num'] = df_temp[str_srs_extract_num+'_num'].replace('', np.nan).astype('float64')
+
+
+        # Return data
+        return df_temp
+        
+    else:
+        print ("No execution of function, passing indata")
+        return indata
+
 
 def f_regex_str(exec_f, in_series):
     """
@@ -501,6 +536,7 @@ def f_regex_str(exec_f, in_series):
 def f_regex_char_all(exec_f, indata, str_srs_extract_char):
     """
     This function takes a DataFrame, and column name as string, and parses out ALL MATCHES of integers, [0-9]
+    NOTE: This function is not optimized for big data volumes.
     """
     
     if exec_f:
@@ -508,12 +544,16 @@ def f_regex_char_all(exec_f, indata, str_srs_extract_char):
         # Modules
         import pandas as pd
         import numpy as np
+        import re
     
         # Indata
         df_temp = indata.copy()
     
-        # Explode regex extract
-        srs_char_all = df_temp[str_srs_extract_char].str.findall('(\D+)', flags=re.IGNORECASE).explode()
+        # Explode regex extract to "many rows per match", if index has two match it becomes duplicate, i.e. 1 --> 1, 1
+        srs_char_all = df_temp[str_srs_extract_char].astype('str').str.findall('(\D+)').explode()
+
+        # Remove NaN values so we dont sum NaN
+        srs_char_all = srs_char_all[srs_char_all.notna()]
         
         # Groupby and sum them so we get unique index rows again
         df_temp[str_srs_extract_char + '_char'] = srs_char_all.groupby(srs_char_all.index).sum()
@@ -524,6 +564,34 @@ def f_regex_char_all(exec_f, indata, str_srs_extract_char):
     else:
         print ("No execution of function, passing indata")
         return indata
+
+def f_regex_rpl_char_all(exec_f, indata, str_srs_extract_char):
+    """
+    This function takes a DataFrame, and column name as string, and REMOVES ALL MATCHES of INTEGERS, [0-9], to obtain a CHARACTER ONLY SERIES.
+    """
+    
+    if exec_f:
+        
+        # Modules
+        import pandas as pd
+        import numpy as np
+        import re
+    
+        # Indata
+        df_temp = indata.copy()
+    
+        # Remove all numerics from character series
+        df_temp[str_srs_extract_char +'_char'] = df_temp[str_srs_extract_char].replace('\d+', '', regex = True)
+        
+        # Replace the blank space with nan
+        df_temp[str_srs_extract_char +'_char'].replace('', np.nan, inplace=True)
+        
+        # Return data
+        return df_temp
+        
+    else:
+        print ("No execution of function, passing indata")
+        return indata        
 
 
 def f_grpby_fillna(exec_f, indata, list_grpby, col_fillna, col_fillna_val, func_fillna):
